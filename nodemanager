@@ -1,0 +1,208 @@
+#!/usr/bin/env bash 
+# chkconfig: 2345 95 20
+# description: Trunk registration check
+# processname: manager-node
+
+
+serviceName="nodemanager"
+
+pathUi=/var/www/autoobzvon/ui/
+nameUI="nuxt_ui"
+pathAmi=/var/www/autoobzvon/AMI/
+nameAmi="ARI"
+
+#
+# Функция для запроса статуса приложений
+# Принимает имя-команду приложения
+# Возвращает статус x: 1 - запущенно и 0 - не запущенно
+# И ответ в консоль
+#
+stat_node() {
+  case "$1" in
+    ui)
+      a=$(pm2 ls | grep "${nameUI} .* online")
+      if [ "${a}" != "" ]; then
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameUI}" is running <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        x=1
+      else
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameUI}" is not running <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        x=0
+      fi
+    ;;
+    ari)
+      a=$(pm2 ls | grep "${nameAmi} .* online")
+      if [ "${a}" != "" ]; then
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameAmi}" is running <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        x=1
+      else
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameAmi}" is not running <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        x=0
+      fi
+    ;;
+    "")
+      pm2 ls
+    ;;
+    *)
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      echo "-->> Invalid app name <<--"
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    ;;
+  esac
+}
+
+#
+# Функция запуска приложений
+# Принимает имя-команду приложения
+# Возвращает результат в консоль
+#
+run_node() {
+   case "$1" in
+    ui)
+      stat_node "$1" > /dev/null
+      if [ ${x} = 1 ]; then
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          echo "--> App "${nameUI}" is already running"
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          return 0
+      fi
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      echo "-->> Starting node app UI <<--"
+      cd ${pathUi}
+      npm run pm2prod > /dev/null
+      if [ $? ]; then
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameUI}" successfully started <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      else
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameUI}" error started <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      fi
+    ;;
+    ari)
+      stat_node "$1" > /dev/null
+      if [ ${x} = 1 ]; then
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          echo "--> App "${nameAmi}" is already running"
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          return 0
+      fi
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      echo "-->> Starting node app ARI <<--"
+      cd ${pathAmi}
+      npm run pm2prod > /dev/null
+      if [ $? ]; then
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameAmi}" successfully started <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      else
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameAmi}" error started <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      fi
+    ;;
+    "")
+      run_node ui
+      run_node ari
+    ;;
+    *)
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      echo "-->> Invalid app name <<--"
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    ;;
+  esac
+}
+
+#
+# Функция остановки приложений
+# Принимает имя-команду приложения
+# Возвращает результат в консоль
+#
+
+stop_node() {
+  case $1 in
+    ui)
+       stat_node "$1" > /dev/null
+         if [ "${x}" = "0" ]; then
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          echo "--> App "${nameUI}" is not running"
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          return 0
+       fi
+       echo "-->> Stopping node app UI <<--"
+       cd ${pathUi}
+       npm run pm2delete > /dev/null
+      if [ $? ]; then
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameUI}" successfully stopped <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      else
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameUI}" error stopped <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      fi
+    ;;
+    ari)
+       stat_node "$1" > /dev/null
+       if [ "${x}" = "0" ]; then
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          echo "--> App "${nameAmi}" is not running"
+          echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          return 0
+       fi
+       echo "-->> Stopping node app ARI <<--"
+       cd ${pathAmi}
+       npm run pm2delete > /dev/null
+      if [ $? ]; then
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameAmi}" successfully stopped <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      else
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "-->> App "${nameAmi}" error stopped <<--"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      fi
+    ;;
+    "")
+      stop_node ui
+      stop_node ari
+    ;;
+    *)
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+      echo "-->> Invalid app name <<--"
+      echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    ;;
+  esac
+}
+
+#
+# Обычное выполнение скрипта
+#
+
+case "$1" in
+	start)
+	  run_node "$2"
+	;;
+	status)
+		stat_node "$2"
+	;;
+	stop)
+	  stop_node "$2"
+	;;
+	restart)
+    stop_node "$2"
+    run_node "$2"
+	;;
+	*)
+		echo "Usage: ${serviceName} {start|stop|status|restart"
+		exit 1
+	;;
+esac

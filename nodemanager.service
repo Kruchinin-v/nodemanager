@@ -1,0 +1,11 @@
+[Unit]
+Description=Managment node apps
+After=asterisk.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/nodemanager start
+ExecStop=/usr/local/bin/nodemanager stop
+
+[Install]
+WantedBy=multi-user.target
